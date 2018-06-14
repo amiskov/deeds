@@ -3,8 +3,10 @@
         <h2 class="date">{{getFormattedDate}}</h2>
 
         <ul class="deeds">
-            <li is="deed" @save="saveDeeds" v-for="(item, index) in deeds" v-bind:item="item"
-                v-on:remove="removedeed(index)" v-bind:key="item.id"></li>
+            <li is="deed"
+                v-for="(item, index) in deeds"
+                @save="saveDeeds" @remove="removedeed(index)"
+                :item="item" :key="item.id"></li>
         </ul>
         <button v-on:click="addDeed" class="add-deed">+</button>
         <button @click="exportDeeds">Export</button>
@@ -13,7 +15,9 @@
 </template>
 
 <script>
+    import {EventBus} from './main'
     import Deed from './components/Deed.vue'
+    // import {dbDaysRef} from './firebaseConfig';
 
     export default {
         name: 'app',
@@ -27,35 +31,45 @@
             }
         },
         computed: {
-           getFormattedDate() {
+            dateHash() {
+                return 'deeds_' + this.todayDate.setHours(0, 0, 0, 0); // seconds for 00:00:00
+            },
+            getFormattedDate() {
                 return this.todayDate.toLocaleTimeString('ru-RU', {
                     day: 'numeric',
                     month: 'short',
                     weekday: 'short'
                 })
-           } 
+            }
         },
         mounted() {
-            // this.deeds = deedsDone;
-            const dateHash = new Date().setHours(0,0,0); // hash for day to store in localStorage
-
-            if(localStorage.getItem('dateHash')) {
-                const allDeeds = localStorage.getItem('dateHash');
-                this.deeds = JSON.parse(allDeeds);
+            if (localStorage.getItem(this.dateHash)) {
+                const allDeeds = localStorage.getItem(this.dateHash);
+                this.deeds     = JSON.parse(allDeeds);
             } else {
-                localStorage.setItem('dateHash', '[]')
+                localStorage.setItem(this.dateHash, '[]')
             }
 
         },
         methods: {
             exportDeeds() {
-                document.getElementById('export').innerHTML = localStorage.getItem('dateHash');
+                document.getElementById('export').innerHTML = localStorage.getItem(this.dateHash);
             },
-            saveDeeds(event) {
-                this.deeds.forEach(deed => {
-                    deed.isEditable = false;
-                });
-                localStorage.setItem('dateHash', JSON.stringify(this.deeds))
+            saveDeeds(data) {
+                if (data && data.newDate) {
+                    this.deeds[data.deedId].date = data.newDate;
+                } else {
+                    this.deeds.forEach(deed => {
+                        deed.isEditable = false;
+                    });
+                }
+
+               localStorage.setItem(this.dateHash, JSON.stringify(this.deeds))
+
+                // dbDaysRef.push({
+                //     [this.dateHash]: this.deeds
+                // });
+
             },
             addDeed(deed, i) {
                 const index = this.deeds.length;
@@ -69,13 +83,13 @@
                     isEditable: true
                 });
 
-                // set duration in previous deed
+                // set duration
                 if (index >= 1) {
-                    const seconds = (+date - +this.deeds[index - 1].date) / 1000;
-                    this.deeds[index - 1].duration = toHHMMSS(seconds)
+                    const seconds              = (+date - +this.deeds[index - 1].date) / 1000;
+                    this.deeds[index].duration = toHHMMSS(seconds)
                 }
             },
-            removedeed (index) {
+            removedeed(index) {
                 this.deeds.splice(index, 1);
                 this.saveDeeds();
             }
@@ -83,7 +97,6 @@
     }
 
     function toHHMMSS(secs) {
-        console.log(secs);
         const sec_num = parseInt(secs, 10); // don't forget the second param
 
         let hours   = Math.floor(sec_num / 3600);
@@ -117,14 +130,17 @@
         color: #2c3e50;
         margin-top: 60px;
     }
+
     .date {
         text-align: center;
     }
+
     .add-deed {
         width: 100%;
         margin: 20px 0 0;
         padding: 20px;
     }
+
     #export {
         white-space: pre-line;
     }

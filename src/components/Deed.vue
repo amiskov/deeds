@@ -1,6 +1,6 @@
 <template>
     <li class="deed">
-        <span class="deed__time">{{time}}</span>
+        <deed-time @timeUpdated="updateTime" :date="item.date"></deed-time>
 
         <div class="deed__text" @click="isEditable = true">
             <span class="deed__title" v-if="!isEditable">{{item.title}}</span>
@@ -18,9 +18,13 @@
 </template>
 
 <script>
-    const dateOptions = {hour: '2-digit', minute: '2-digit'};
+    import Time from './Time.vue'
+
     export default {
         name: 'deed',
+        components: {
+            'deed-time': Time
+        },
         props: {
             item: {
                 type: Object,
@@ -34,18 +38,20 @@
                 isEditable: this.item.isEditable
             }
         },
-        computed: {
-            time: function () {
-                return new Date(this.item.date).toLocaleString('ru-RU', dateOptions)
-            }
-        },
         methods: {
-            saveDeed(event) {
+            saveDeed() {
                 this.isEditable = false
                 this.$emit('save')
             },
-            edit (param) {
-                this.$emit('edit', param)
+            updateTime(data) {
+                let date = new Date(this.item.date);
+                const hours = data.split(':')[0];
+                const mins = data.split(':')[1];
+
+                this.$emit('save', {
+                    deedId: this.item.id,
+                    newDate: +date.setHours(hours, mins)
+                });
             },
             remove: function () {
                 this.$emit('remove');
@@ -71,11 +77,6 @@
     .deed {
         border-bottom: 1px solid #ccc;
         display: flex;
-
-        &__time {
-            line-height: 3em;
-            margin: 0 .5em;
-        }
 
         &__text {
             flex-grow: 1;
